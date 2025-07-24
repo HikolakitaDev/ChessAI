@@ -22,7 +22,7 @@ def get_game_phase(board: chess.Board):
     for piece_type in phase_values:
         phase += len(board.pieces(piece_type, chess.WHITE)) * phase_values[piece_type]
         phase += len(board.pieces(piece_type, chess.BLACK)) * phase_values[piece_type]
-    return phase
+    return "opening" if phase > 18 else "middlegame" if phase > 6 else "endgame"
 
 
 if __name__ == "__main__":
@@ -55,10 +55,10 @@ if __name__ == "__main__":
             print("\nBot is thinking...")
             phase = get_game_phase(board)
 
-            if phase > 18:  # opening
+            if phase == "opening":  # opening
                 search_depth = 3
                 print(f"(Phase: Opening, Depth: {search_depth})")
-            elif phase > 6:  # midgame
+            elif phase == "middlegame":  # midgame
                 search_depth = 3
                 print(f"(Phase: Middlegame, Depth: {search_depth})")
             else:  # endgame
