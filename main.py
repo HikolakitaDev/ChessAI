@@ -1,5 +1,6 @@
 import chess
 from search import find_best_move
+from opening_book import OpeningBook
 
 board = chess.Board()
 
@@ -24,6 +25,11 @@ def get_game_phase(board: chess.Board):
         phase += len(board.pieces(piece_type, chess.BLACK)) * phase_values[piece_type]
     return "opening" if phase > 18 else "middlegame" if phase > 6 else "endgame"
 
+print("Initializing opening book...")
+book = OpeningBook("../Modern.pgn")
+
+def is_opening_book(board: chess.Board):
+    return book.get_move(board) is not None
 
 if __name__ == "__main__":
 
@@ -53,22 +59,28 @@ if __name__ == "__main__":
 
         else:
             print("\nBot is thinking...")
-            phase = get_game_phase(board)
-
-            if phase == "opening":  # opening
-                search_depth = 3
-                print(f"(Phase: Opening, Depth: {search_depth})")
-            elif phase == "middlegame":  # midgame
-                search_depth = 3
-                print(f"(Phase: Middlegame, Depth: {search_depth})")
-            else:  # endgame
-                search_depth = 5
-                print(f"(Phase: Endgame, Depth: {search_depth})")
-            bot_move = find_best_move(board, search_depth)
-
-            if bot_move is not None:
-                print(f"Bot plays: {bot_move.uci()}")
-                make_move(bot_move.uci())
+            if is_opening_book(board):
+                bot_move = book.get_move(board)
+                make_move(bot_move)
+                print("Found move in opening book:", bot_move)
             else:
-                print("Bot has no legal moves. This might be a bug or the game ended.")
-                break
+                print("Opening book not found or no move available. Using search algorithm instead.")
+                phase = get_game_phase(board)
+
+                if phase == "opening":  # opening
+                    search_depth = 3
+                    print(f"(Phase: Opening, Depth: {search_depth})")
+                elif phase == "middlegame":  # midgame
+                    search_depth = 3
+                    print(f"(Phase: Middlegame, Depth: {search_depth})")
+                else:  # endgame
+                    search_depth = 5
+                    print(f"(Phase: Endgame, Depth: {search_depth})")
+                bot_move = find_best_move(board, search_depth)
+
+                if bot_move is not None:
+                    print(f"Bot plays: {bot_move.uci()}")
+                    make_move(bot_move.uci())
+                else:
+                    print("Bot has no legal moves. This might be a bug or the game ended.")
+                    break
