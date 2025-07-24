@@ -8,10 +8,10 @@ class OpeningBook:
     def __init__(self, pgn_file_path: str):
         self.book = {}
         if not os.path.exists(pgn_file_path):
-            print(f"Warning: PGN file not found at '{pgn_file_path}'. The opening book will be empty.")
+            print(f"PGN file not found at '{pgn_file_path}'. The opening book will be empty.")
             return
             
-        print("Building opening book from PGN... This may take a moment.")
+        print("Building opening book from PGN...")
         self.build_book(pgn_file_path)
         print(f"Book built successfully with {len(self.book)} unique positions.")
 
