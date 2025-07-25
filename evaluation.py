@@ -9,6 +9,116 @@ def get_game_phase(board: chess.Board):
         phase += len(board.pieces(piece_type, chess.BLACK)) * phase_values[piece_type]
     return "opening" if phase > 18 else "middlegame" if phase > 6 else "endgame"
 
+import chess
+
+def get_game_phase(board: chess.Board):
+    phase_values = { chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4 }
+    phase = 0
+    for piece_type in phase_values:
+        phase += len(board.pieces(piece_type, chess.WHITE)) * phase_values[piece_type]
+        phase += len(board.pieces(piece_type, chess.BLACK)) * phase_values[piece_type]
+    return "opening" if phase > 18 else "middlegame" if phase > 6 else "endgame"
+
+def evaluate_pawns(board: chess.Board, color: chess.Color) -> int:
+    friendly_pawns = board.pieces(chess.PAWN, color)
+    score = 0
+
+    for pawn_square in friendly_pawns:
+        file = chess.square_file(pawn_square)
+        rank = chess.square_rank(pawn_square)
+
+        if len(list(friendly_pawns & chess.BB_FILES[file])) > 1:
+            score -= 15
+
+        is_isolated = True
+        for adjacent_file in [file - 1, file + 1]:
+            if 0 <= adjacent_file <= 7:
+                if bool(friendly_pawns & chess.BB_FILES[adjacent_file]):
+                    is_isolated = False
+                    break
+        if is_isolated:
+            score -= 20
+
+        is_connected = False
+        if not is_isolated:
+            for adjacent_file in [file - 1, file + 1]:
+                if 0 <= adjacent_file <= 7:
+                    preceding_rank_bb = chess.BB_RANKS[rank - 1] if color == chess.WHITE else chess.BB_RANKS[rank + 1]
+                    if bool(friendly_pawns & chess.BB_FILES[adjacent_file] & (chess.BB_RANKS[rank] | preceding_rank_bb)):
+                        is_connected = True
+                        break
+        if is_connected:
+            score += 10
+
+        is_passed = True
+        enemy_pawn_files = {chess.square_file(sq) for sq in board.pieces(chess.PAWN, not color)}
+        
+        start_rank = rank + 1 if color == chess.WHITE else 0
+        end_rank = 8 if color == chess.WHITE else rank
+        
+        for ahead_rank in range(start_rank, end_rank):
+            for check_file in [file - 1, file, file + 1]:
+                if check_file in enemy_pawn_files:
+                     is_passed = False
+                     break
+            if not is_passed:
+                break
+        
+        if is_passed:
+            rank_bonus = [0, 20, 30, 40, 60, 100, 150, 0]
+            score += rank_bonus[rank if color == chess.WHITE else 7 - rank]
+            
+    return score
+
+def evaluate_kings(board: chess.Board, color: chess.Color) -> int:
+    score = 0
+    king_square = board.king(color)
+    if king_square is None:
+        return -10000
+
+    phase = get_game_phase(board)
+    
+    if phase in ["opening", "middlegame"]:
+        king_file = chess.square_file(king_square)
+        king_rank = chess.square_rank(king_square)
+        
+        pawn_shield_rank = king_rank + (1 if color == chess.WHITE else -1)
+        if 0 <= pawn_shield_rank <= 7:
+            for shield_file in range(max(0, king_file - 1), min(7, king_file + 1) + 1):
+                shield_square = chess.square(shield_file, pawn_shield_rank)
+                piece = board.piece_at(shield_square)
+                if piece and piece.piece_type == chess.PAWN and piece.color == color:
+                    score += 15
+                elif not board.pieces(chess.PAWN, color) & chess.BB_FILES[shield_file]:
+                    score -= 10
+    else: # endgame
+        center_squares = [chess.D4, chess.E4, chess.D5, chess.E5]
+        min_dist = min(chess.square_distance(king_square, sq) for sq in center_squares)
+        score += (3 - min_dist) * 10
+        
+    return score
+
+def evaluate_rooks(board: chess.Board, color: chess.Color) -> int:
+    score = 0
+    friendly_rooks = board.pieces(chess.ROOK, color)
+    all_pawns = board.pieces(chess.PAWN, chess.WHITE) | board.pieces(chess.PAWN, chess.BLACK)
+    friendly_pawns = board.pieces(chess.PAWN, color)
+
+    for rook_square in friendly_rooks:
+        file = chess.square_file(rook_square)
+        rank = chess.square_rank(rook_square)
+        
+        file_pawns = all_pawns & chess.BB_FILES[file]
+        if not file_pawns:
+            score += 15
+        elif not (friendly_pawns & chess.BB_FILES[file]):
+            score += 10
+
+        seventh_rank = 6 if color == chess.WHITE else 1
+        if rank == seventh_rank:
+            score += 25
+            
+    return score
 
 # piece square tables
 pawn_mg = [
